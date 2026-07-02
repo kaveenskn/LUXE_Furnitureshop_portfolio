@@ -35,13 +35,13 @@ const PROCESS_STEPS = [
     num: '05',
     title: 'Craftsmanship & Construction',
     desc: "Our master builders and artisans bring the design to life with uncompromising attention to detail, precision, and quality control.",
-    img: 'https://images.unsplash.com/photo-1581428982868-e410dd127a90?auto=format&fit=crop&q=80&w=800'
+    img: '/philosophy-cabinet.png'
   },
   {
     num: '06',
     title: 'Final Reveal & Handover',
     desc: "We conduct a meticulous final walkthrough, ensuring every element is perfect before welcoming you to your newly transformed space.",
-    img: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&q=80&w=800'
+    img: '/philosophy-room.png'
   }
 ];
 
