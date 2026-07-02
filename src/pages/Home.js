@@ -684,19 +684,6 @@ const Overlay = memo(({ frame, setIsModalOpen, progressBarRef }) => (
 export default function Home() {
   const [frame, setFrame] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-
-  useEffect(() => {
-    const mql = window.matchMedia('(max-width: 768px)');
-    const handler = (e) => setIsMobile(e.matches);
-    if (mql.addEventListener) {
-      mql.addEventListener('change', handler);
-      return () => mql.removeEventListener('change', handler);
-    } else {
-      mql.addListener(handler);
-      return () => mql.removeListener(handler);
-    }
-  }, []);
 
   // Use a ref for the progress bar DOM element to avoid re-renders on every frame
   const progressBarRef = useRef(null);
@@ -718,12 +705,8 @@ export default function Home() {
   return (
     <div style={{ background: '#000', minHeight: '100vh' }}>
       <ScrollFrameEngine
-        key={isMobile ? 'mobile' : 'desktop'}
         frameCount={250}
         startFrame={1}
-        framePath={(index) => isMobile 
-          ? `/FurniturescrollMobile/frame_${index.toString().padStart(4, '0')}.webp`
-          : `/Furniturescroll/frame_${index.toString().padStart(4, '0')}.webp`}
         scrollHeight="2090vh"
         onProgress={onProgress}
       >
