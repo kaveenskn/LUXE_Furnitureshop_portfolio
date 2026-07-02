@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { S, SERIF, SANS } from '../styles/shared';
 import gsap from 'gsap';
@@ -97,12 +97,16 @@ function GridTile({ icon, title, description, delay }) {
 }
 
 export default function Philosophy() {
-  const [heroParallax, setHeroParallax] = useState(0);
-  const heroRef = useRef(null);
-  const pageRef = useRef(null);
+  const heroRef       = useRef(null);
+  const heroBgRef     = useRef(null);  // direct DOM ref for parallax
+  const pageRef       = useRef(null);
 
   useEffect(() => {
-    const onScroll = () => setHeroParallax(window.scrollY * 0.35);
+    const onScroll = () => {
+      if (heroBgRef.current) {
+        heroBgRef.current.style.transform = `translateY(${window.scrollY * 0.35}px)`;
+      }
+    };
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
@@ -157,7 +161,7 @@ export default function Philosophy() {
 
       {/* ══════ HERO ══════ */}
       <section ref={heroRef} style={{ position:'relative', height:'100vh', minHeight:'680px', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', textAlign:'center' }}>
-        <div style={{ position:'absolute', inset:'-10%', backgroundImage:'url(/philosophy-hero.png)', backgroundSize:'cover', backgroundPosition:'center', transform:`translateY(${heroParallax}px)`, filter:'brightness(0.28)' }} />
+        <div ref={heroBgRef} style={{ position:'absolute', inset:'-10%', backgroundImage:'url(/philosophy-hero.png)', backgroundSize:'cover', backgroundPosition:'center', filter:'brightness(0.28)' }} />
         <div style={{ position:'absolute', inset:0, background:'linear-gradient(to bottom, rgba(10,10,10,0.2) 0%, rgba(10,10,10,0) 40%, rgba(10,10,10,0.8) 100%)' }} />
         <div style={{ position:'relative', zIndex:2, padding:'0 24px', maxWidth:'800px' }}>
           <span className="phil-hero-label phil-label" style={{ marginBottom:'24px', display:'block' }}>Furniture Fittings Excellence</span>

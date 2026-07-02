@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, memo } from 'react';
 import ScrollFrameEngine from '../components/ScrollFrameEngine';
 import InstallationModal from '../components/InstallationModal';
 import { S, SERIF, SANS } from '../styles/shared';
@@ -21,7 +21,7 @@ function active(frame, [s, e], margin = 3) {
 /* ─────────────────────────────────────────────
    1 · HERO  (frames 1–25)
 ───────────────────────────────────────────── */
-const HeroSection = ({ f }) => {
+const HeroSection = memo(({ f }) => {
   const container = useRef(null);
 
   useGSAP(() => {
@@ -77,12 +77,12 @@ const HeroSection = ({ f }) => {
       </div>
     </div>
   );
-};
+});
 
 /* ─────────────────────────────────────────────
    2 · INTRODUCTION  (frames 26–55)
 ───────────────────────────────────────────── */
-const IntroSection = ({ f }) => {
+const IntroSection = memo(({ f }) => {
   if (!active(f, [26, 55])) return null;
 
   const opIn  = lerp(f, [26, 32], [0, 1]);
@@ -111,7 +111,7 @@ const IntroSection = ({ f }) => {
       </div>
     </div>
   );
-};
+});
 
 /* ─────────────────────────────────────────────
    3 · TRANSFORMATION  (frames 56–90)
@@ -123,7 +123,7 @@ const TRANSFORM_CARDS = [
   { title: 'Curated Decor',          icon: '○', in: [79, 84], out: [87, 90] },
 ];
 
-const TransformSection = ({ f }) => {
+const TransformSection = memo(({ f }) => {
   if (!active(f, [56, 90])) return null;
 
   const hIn  = lerp(f, [56, 60], [0, 1]);
@@ -172,7 +172,7 @@ const TransformSection = ({ f }) => {
       })}
     </div>
   );
-};
+});
 
 /* ─────────────────────────────────────────────
    4 · DESIGN PHILOSOPHY  (frames 91–125)
@@ -183,7 +183,7 @@ const PHILOSOPHY_CARDS = [
   { title: 'Thoughtful Details',     desc: 'Every handle, joint, and finish chosen with intention.',   delay: 6 },
 ];
 
-const PhilosophySection = ({ f }) => {
+const PhilosophySection = memo(({ f }) => {
   const [expandedIndex, setExpandedIndex] = useState(null);
 
   if (!active(f, [91, 125])) return null;
@@ -246,7 +246,7 @@ const PhilosophySection = ({ f }) => {
       </div>
     </div>
   );
-};
+});
 
 /* ─────────────────────────────────────────────
    5 · OUR PROCESS  (frames 126–160)
@@ -256,7 +256,7 @@ const PROCESS_STEPS = [
   'Material Selection', 'Construction', 'Final Styling',
 ];
 
-const ProcessSection = ({ f }) => {
+const ProcessSection = memo(({ f }) => {
   if (!active(f, [126, 160])) return null;
 
   const opIn  = lerp(f, [126, 130], [0, 1]);
@@ -325,7 +325,7 @@ const ProcessSection = ({ f }) => {
       </div>
     </div>
   );
-};
+});
 
 /* ─────────────────────────────────────────────
    6 · FEATURED SPACES  (frames 161–190)
@@ -335,7 +335,7 @@ const SPACE_CATS = [
   'Boutique Hotels', 'Executive Offices', 'Luxury Villas',
 ];
 
-const SpacesSection = ({ f }) => {
+const SpacesSection = memo(({ f }) => {
   if (!active(f, [161, 190])) return null;
 
   const hIn  = lerp(f, [161, 165], [0, 1]);
@@ -383,7 +383,7 @@ const SpacesSection = ({ f }) => {
       </div>
     </div>
   );
-};
+});
 
 /* ─────────────────────────────────────────────
    7 · STATISTICS  (frames 191–220)
@@ -418,7 +418,7 @@ const Counter = ({ target, suffix, label, triggerFrame, f }) => {
   );
 };
 
-const StatsSection = ({ f }) => {
+const StatsSection = memo(({ f }) => {
   if (!active(f, [191, 220])) return null;
 
   const opIn  = lerp(f, [191, 196], [0, 1]);
@@ -439,12 +439,12 @@ const StatsSection = ({ f }) => {
       <Counter target={18}  suffix=""  label="Design Awards"       triggerFrame={194} f={f} />
     </div>
   );
-};
+});
 
 /* ─────────────────────────────────────────────
    8 · CALL TO ACTION  (frames 221–240)
 ───────────────────────────────────────────── */
-const CTASection = ({ f, setIsModalOpen }) => {
+const CTASection = memo(({ f, setIsModalOpen }) => {
   if (!active(f, [221, 240])) return null;
 
   const opIn  = lerp(f, [221, 226], [0, 1]);
@@ -490,12 +490,12 @@ const CTASection = ({ f, setIsModalOpen }) => {
       </div>
     </div>
   );
-};
+});
 
 /* ─────────────────────────────────────────────
    9 · ENDING  (frames 241–250)
 ───────────────────────────────────────────── */
-const EndingSection = ({ f }) => {
+const EndingSection = memo(({ f }) => {
   if (!active(f, [241, 250])) return null;
 
   const op = lerp(f, [241, 245], [0, 1]);
@@ -531,12 +531,12 @@ const EndingSection = ({ f }) => {
       </div>
     </div>
   );
-};
+});
 
 /* ─────────────────────────────────────────────
    OVERLAY COMPOSITOR
 ───────────────────────────────────────────── */
-const Overlay = ({ progress, frame, setIsModalOpen }) => (
+const Overlay = memo(({ frame, setIsModalOpen, progressBarRef }) => (
   <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
     {/* cinematic vignette */}
     <div style={{
@@ -547,10 +547,10 @@ const Overlay = ({ progress, frame, setIsModalOpen }) => (
       `,
     }} />
 
-    {/* scroll progress */}
-    <div style={{
+    {/* scroll progress — updated imperatively via ref to avoid re-renders */}
+    <div ref={progressBarRef} style={{
       position: 'absolute', bottom: 0, left: 0, height: 2,
-      width: `${progress * 100}%`,
+      width: '0%',
       background: 'linear-gradient(90deg, rgba(255,255,255,0.7), rgba(255,255,255,0.2))',
       zIndex: 50,
     }} />
@@ -679,16 +679,27 @@ const Overlay = ({ progress, frame, setIsModalOpen }) => (
       }
     `}</style>
   </div>
-);
+));
 
 export default function Home() {
-  const [progress, setProgress] = useState(0);
   const [frame, setFrame] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Use a ref for the progress bar DOM element to avoid re-renders on every frame
+  const progressBarRef = useRef(null);
+  const lastFrameRef   = useRef(1);
+
   const onProgress = useCallback((p, f) => {
-    setProgress(p);
-    if (f !== undefined) setFrame(Math.round(f));
+    // Update progress bar directly via DOM — zero React overhead
+    if (progressBarRef.current) {
+      progressBarRef.current.style.width = `${p * 100}%`;
+    }
+    // Only schedule a React re-render when the integer frame actually changes
+    const rounded = f !== undefined ? Math.round(f) : lastFrameRef.current;
+    if (rounded !== lastFrameRef.current) {
+      lastFrameRef.current = rounded;
+      setFrame(rounded);
+    }
   }, []);
 
   return (
@@ -699,7 +710,7 @@ export default function Home() {
         scrollHeight="2090vh"
         onProgress={onProgress}
       >
-        <Overlay progress={progress} frame={frame} setIsModalOpen={setIsModalOpen} />
+        <Overlay frame={frame} setIsModalOpen={setIsModalOpen} progressBarRef={progressBarRef} />
       </ScrollFrameEngine>
       
       <InstallationModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
