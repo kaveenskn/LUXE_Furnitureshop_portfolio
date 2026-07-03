@@ -426,7 +426,7 @@ const StatsSection = memo(({ f }) => {
   const op    = Math.min(opIn, opOut);
 
   return (
-    <div style={{
+    <div className="stats-section" style={{
       position: 'absolute', inset: 0, display: 'flex',
       justifyContent: 'center', alignItems: 'center', gap: '5vw',
       flexWrap: 'wrap', padding: '0 8vw', opacity: op,
@@ -637,8 +637,14 @@ const Overlay = memo(({ frame, setIsModalOpen, progressBarRef }) => (
           width: 30px !important;
           height: 30px !important;
         }
+        
         .hero-section, .intro-section, .transform-section, .philosophy-section, .process-section, .detail-section, .outro-section {
           padding-top: 88px !important;
+        }
+
+        .stats-section {
+          padding-top: 120px !important;
+          align-content: center !important;
         }
         
         .philosophy-cards {
