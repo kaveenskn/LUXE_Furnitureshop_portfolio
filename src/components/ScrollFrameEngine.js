@@ -4,11 +4,17 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
  * ScrollFrameEngine  — PERFORMANCE-OPTIMISED
  * ─────────────────────────────────────────
  * Key improvements over previous version:
+ *  • PROGRESSIVE LOADING — only the first frame blocks the "ready" state.
+ *    The remaining frames stream in behind a 6-way concurrency limit instead
+ *    of firing 250 simultaneous requests, so the hero paints almost
+ *    instantly and the network/main thread aren't swamped on page load.
+ *  • PRIORITY QUEUE — whatever frame the user scrolls to next jumps to the
+ *    front of the download queue, so fast scrolling doesn't wait behind
+ *    frames that are further away.
  *  • No per-frame React state updates — progress/frame exposed via refs + optional callback.
  *  • rAF loop is SELF-TERMINATING: runs only while scroll targets are changing.
- *  • Image preloading tracked with a plain counter ref — only 2 setState calls total
- *    (one at 95 % loaded, one at 100 %).
  *  • Canvas size stored in refs; resize only resets when the image dimensions actually change.
+ *  • Opaque (alpha:false) canvas context — cheaper compositing for fully-opaque frames.
  *  • Easing factor raised to 0.18 for a snappier, less laggy feel.
  *  • Scroll handler is throttled to one update per rAF to prevent handler pile-ups.
  */
@@ -50,41 +56,99 @@ const ScrollFrameEngine = ({
   const imagesRef      = useRef([]);
   const loadedCountRef = useRef(0);   // plain ref, not state
 
+  // Progressive-loading machinery: only a handful of frames download at once,
+  // the first frame jumps the queue, and later frames stream in the
+  // background while the user is already scrolling.
+  const requestedRef    = useRef(new Set());  // indices whose download has started
+  const pendingQueueRef = useRef([]);         // indices waiting for a free slot
+  const activeCountRef  = useRef(0);
+  const pumpRef         = useRef(() => {});
+  const MAX_CONCURRENT  = 6;
+
   const [loadPercent, setLoadPercent] = useState(0);
   const [isReady,     setIsReady]     = useState(false);
   const [isVisible,   setIsVisible]   = useState(false);
 
-  /* ── 1. PRELOAD IMAGES ──
-     Only 2 React setState calls total: at 95 % and at 100 % loaded.
+  /* ── 1. PROGRESSIVE PRELOAD ──
+     The first frame is fetched immediately and flips `isReady` the moment
+     it lands — the user is NOT blocked on the other ~249 frames. Everything
+     else streams in behind a small concurrency window (6 in-flight) so the
+     browser/network isn't asked to fetch all frames simultaneously, and so
+     the rest of the page stays responsive while they load.
   ── */
   useEffect(() => {
     const totalFramesToLoad = frameCount - startFrame + 1;
-    let ready95Fired = false;
 
     const images = [];
     imagesRef.current = images;
-    loadedCountRef.current = 0;
+    loadedCountRef.current  = 0;
+    activeCountRef.current  = 0;
+    requestedRef.current    = new Set();
+    pendingQueueRef.current = [];
 
     for (let i = startFrame; i <= frameCount; i++) {
       const img = new Image();
-      img.src = framePath(i);
+      img.decoding = 'async';
       images[i] = img;
-
-      img.onload = () => {
-        loadedCountRef.current += 1;
-        const pct = Math.min(100, Math.round((loadedCountRef.current / totalFramesToLoad) * 100));
-
-        if (!ready95Fired && loadedCountRef.current >= totalFramesToLoad * 0.95) {
-          ready95Fired = true;
-          setLoadPercent(pct);
-          setIsReady(true);
-        } else if (loadedCountRef.current === totalFramesToLoad) {
-          setLoadPercent(100);
-        }
-      };
     }
 
+    const loadImage = (i, isFirst) => {
+      requestedRef.current.add(i);
+      activeCountRef.current += 1;
+      const img = images[i];
+
+      const finish = () => {
+        loadedCountRef.current += 1;
+        activeCountRef.current -= 1;
+        const pct = Math.min(100, Math.round((loadedCountRef.current / totalFramesToLoad) * 100));
+        setLoadPercent(pct);
+        if (isFirst) setIsReady(true);
+        pumpRef.current();
+      };
+
+      img.onload  = finish;
+      img.onerror = finish; // never let a single bad frame stall the queue
+      img.fetchPriority = isFirst ? 'high' : 'low';
+      img.src = framePath(i);
+    };
+
+    const pump = () => {
+      while (activeCountRef.current < MAX_CONCURRENT && pendingQueueRef.current.length > 0) {
+        const next = pendingQueueRef.current.shift();
+        if (!requestedRef.current.has(next)) loadImage(next, false);
+      }
+    };
+    pumpRef.current = pump;
+
+    const queue = [];
+    for (let i = startFrame + 1; i <= frameCount; i++) queue.push(i);
+    pendingQueueRef.current = queue;
+
+    // First frame jumps the queue so the hero paints as fast as possible.
+    loadImage(startFrame, true);
+    pump();
+
+    return () => {
+      pumpRef.current = () => {};
+      pendingQueueRef.current = [];
+    };
   }, [frameCount, startFrame]);
+
+  /* ── Bump a frame (and its close neighbours) to the front of the queue
+     when the user scrolls to it before it's downloaded yet. ── */
+  const prioritizeFrame = useCallback((targetIndex) => {
+    const q = pendingQueueRef.current;
+    for (let i = targetIndex - 1; i <= targetIndex + 2; i++) {
+      if (i < startFrame || i > frameCount) continue;
+      if (requestedRef.current.has(i)) continue;
+      const idx = q.indexOf(i);
+      if (idx > 0) {
+        q.splice(idx, 1);
+        q.unshift(i);
+      }
+    }
+    if (activeCountRef.current < MAX_CONCURRENT) pumpRef.current();
+  }, [startFrame, frameCount]);
 
   /* ── 2. INTERSECTION OBSERVER ── */
   useEffect(() => {
@@ -110,7 +174,7 @@ const ScrollFrameEngine = ({
       canvasHRef.current = img.naturalHeight;
     }
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: false });
     ctx.drawImage(img, 0, 0);
   }, []);
 
@@ -273,9 +337,10 @@ const ScrollFrameEngine = ({
       targetProgressRef.current = progress;
       targetFrameRef.current    = frameIndex;
 
+      prioritizeFrame(frameIndex);
       startLoop();
     });
-  }, [isVisible, frameCount, startFrame, startLoop]);
+  }, [isVisible, frameCount, startFrame, startLoop, prioritizeFrame]);
 
   useEffect(() => {
     if (!isVisible) return;
